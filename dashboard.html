@@ -197,10 +197,9 @@
             const noResults = document.getElementById('noResults');
 
             try {
-                const response = await fetch(`${API.baseURL}/services`);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                // Use API wrapper instead of direct fetch
+                allServices = await API.request('/services');
 
-                allServices = await response.json();
                 loadingSpinner.style.display = 'none';
 
                 if (!allServices || allServices.length === 0) {
@@ -344,34 +343,10 @@
                     // Try to send a non-blocking POST to record the call. Use fetch with keepalive if we have a token,
                     // otherwise fall back to navigator.sendBeacon (no custom headers) or a fire-and-forget fetch.
                     try {
-                        const token = (API && typeof API.getToken === 'function') ? API.getToken() : localStorage.getItem('token');
-                        const url = `${API.baseURL}/calls`;
-
-                        if (token) {
-                            // send with Authorization header; keepalive helps on mobile during navigation
-                            fetch(url, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'Authorization': `Bearer ${token}`
-                                },
-                                body: JSON.stringify(payloadObj),
-                                keepalive: true,
-                                mode: 'same-origin'
-                            }).catch(() => {});
-                        } else if (navigator && typeof navigator.sendBeacon === 'function') {
-                            const blob = new Blob([JSON.stringify(payloadObj)], { type: 'application/json' });
-                            try { navigator.sendBeacon(url, blob); } catch (e) { /* ignore */ }
-                        } else {
-                            // fallback fire-and-forget
-                            fetch(`${API.baseURL}/calls`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(payloadObj)
-                            }).catch(() => {});
-                        }
+                        // Mock API call - just log it
+                        console.log('Mock call logged:', payloadObj);
                     } catch (e) {
-                        // ignore any errors — do not block dialer
+                        // ignore
                     }
 
                     // Small delay to allow beacon/keepalive to queue, then navigate to tel: link

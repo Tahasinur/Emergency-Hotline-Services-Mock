@@ -5,6 +5,8 @@ class MockAPI {
     constructor() {
         this.simulatedDelay = 800; // ms
         this.currentUser = JSON.parse(localStorage.getItem('user')) || null;
+        this.baseURL = ''; // Safety for legacy code referencing API.baseURL
+
     }
 
     async _mockRequest(data, errorRate = 0) {
