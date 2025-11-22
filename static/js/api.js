@@ -1,256 +1,193 @@
-const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:5000/api`;
+// Mock API for Static Site Demo
+// Since GitHub Pages cannot run a Python backend, we simulate the API here.
 
-class EmergencyAPI {
-  constructor() {
-    this.baseURL = API_BASE_URL;
-  }
-
-  getToken() {
-    return localStorage.getItem("token");
-  }
-
-  getHeaders(includeAuth = true) {
-    const headers = { "Content-Type": "application/json" };
-    if (includeAuth) {
-      const token = this.getToken();
-      if (token) headers["Authorization"] = `Bearer ${token}`;
+class MockAPI {
+    constructor() {
+        this.simulatedDelay = 800; // ms
+        this.currentUser = JSON.parse(localStorage.getItem('user')) || null;
     }
-    return headers;
-  }
 
-  async request(endpoint, options = {}) {
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
-      ...options,
-      headers: this.getHeaders(options.auth !== false),
-    });
-
-    const data = await response.json();
-    if (!response.ok)
-      throw new Error(data.error || `HTTP error! status: ${response.status}`);
-    return data;
-  }
-
-  // Authentication methods
-  async login(username, password) {
-    return this.request("/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ username, password }),
-      auth: false,
-    });
-  }
-
-  async register(userData) {
-    return this.request("/auth/register", {
-      method: "POST",
-      body: JSON.stringify(userData),
-      auth: false,
-    });
-  }
-
-  async logout() {
-    try {
-      await this.request("/auth/logout", { method: "POST" });
-    } finally {
-      localStorage.clear();
-      window.location.href = "index.html";
+    async _mockRequest(data, errorRate = 0) {
+        return new Promise((resolve, reject) => {
+            setTimeout(() => {
+                if (Math.random() < errorRate) {
+                    reject(new Error('Simulated network error'));
+                } else {
+                    resolve(data);
+                }
+            }, this.simulatedDelay);
+        });
     }
-  }
 
-  // Admin: services
-  async getAllServicesAdmin() {
-    return this.request("/admin/services");
-  }
+    getToken() {
+        return localStorage.getItem("token");
+    }
 
-  async createService(serviceData) {
-    return this.request("/admin/services", {
-      method: "POST",
-      body: JSON.stringify(serviceData),
-    });
-  }
+    // Authentication
+    async login(username, password) {
+        // Simulate login
+        let role = 'user';
+        if (username.toLowerCase().includes('admin')) role = 'admin';
+        if (username.toLowerCase().includes('helper')) role = 'helper';
 
-  async updateService(serviceId, serviceData) {
-    return this.request(`/admin/services/${serviceId}`, {
-      method: "PUT",
-      body: JSON.stringify(serviceData),
-    });
-  }
+        const user = {
+            user_id: 123,
+            username: username,
+            email: `${username}@example.com`,
+            role: role,
+            is_active: true,
+            created_at: new Date().toISOString()
+        };
 
-  async deleteService(serviceId) {
-    return this.request(`/admin/services/${serviceId}`, { method: "DELETE" });
-  }
+        this.currentUser = user;
+        return this._mockRequest({
+            token: 'mock-jwt-token-' + Date.now(),
+            user: user
+        });
+    }
 
-  // Admin: services with image upload
-  async createServiceWithImage(formData) {
-    const token = this.getToken();
-    const response = await fetch(`${this.baseURL}/admin/services`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
-    });
+    async register(userData) {
+        return this._mockRequest({
+            message: "User registered successfully",
+            user_id: Date.now()
+        });
+    }
 
-    const data = await response.json();
-    if (!response.ok)
-      throw new Error(data.error || `HTTP error! status: ${response.status}`);
-    return data;
-  }
+    async logout() {
+        this.currentUser = null;
+        return this._mockRequest({ message: "Logged out" });
+    }
 
-  async updateServiceWithImage(serviceId, formData) {
-    const token = this.getToken();
-    const response = await fetch(
-      `${this.baseURL}/admin/services/${serviceId}`,
-      {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      }
-    );
+    // Services
+    async getAllServicesAdmin() {
+        return this._mockRequest(this._getMockServices());
+    }
+    
+    // Public services (same as admin for mock)
+    async request(endpoint) {
+        // Handle the dynamic service fetching used in dashboard
+        if (endpoint === '/services') {
+            return this._mockRequest(this._getMockServices());
+        }
+        return this._mockRequest({});
+    }
 
-    const data = await response.json();
-    if (!response.ok)
-      throw new Error(data.error || `HTTP error! status: ${response.status}`);
-    return data;
-  }
+    _getMockServices() {
+        return [
+            {
+                contact_id: 1,
+                service_name: "National Emergency Service",
+                phone_number: "999",
+                category: "Emergency",
+                description: "Police, Ambulance, and Fire Service",
+                is_active: true,
+                image_path: "static/assets/emergency.png"
+            },
+            {
+                contact_id: 2,
+                service_name: "National Help Desk",
+                phone_number: "333",
+                category: "Government",
+                description: "Government Information & Services",
+                is_active: true,
+                image_path: "static/assets/emergency.png"
+            },
+            {
+                contact_id: 3,
+                service_name: "Child Helpline",
+                phone_number: "1098",
+                category: "Helpline",
+                description: "Child protection and support",
+                is_active: true,
+                image_path: "static/assets/emergency.png"
+            },
+            {
+                contact_id: 4,
+                service_name: "Women & Children Helpline",
+                phone_number: "109",
+                category: "Helpline",
+                description: "Support for women and children",
+                is_active: true,
+                image_path: "static/assets/emergency.png"
+            },
+            {
+                contact_id: 5,
+                service_name: "Disaster Warning",
+                phone_number: "1090",
+                category: "Emergency",
+                description: "Weather and disaster updates",
+                is_active: true,
+                image_path: "static/assets/emergency.png"
+            }
+        ];
+    }
 
-  // Admin: users
-  async getAllUsers() {
-    return this.request("/admin/users");
-  }
+    async createService(serviceData) { return this._mockRequest({ message: "Service created" }); }
+    async updateService(id, data) { return this._mockRequest({ message: "Service updated" }); }
+    async deleteService(id) { return this._mockRequest({ message: "Service deleted" }); }
+    async createServiceWithImage(formData) { return this._mockRequest({ message: "Service created" }); }
+    async updateServiceWithImage(id, formData) { return this._mockRequest({ message: "Service updated" }); }
 
-  async updateUserRole(userId, role) {
-    return this.request(`/admin/users/${userId}/role`, {
-      method: "PUT",
-      body: JSON.stringify({ role }),
-    });
-  }
+    // Users
+    async getAllUsers() {
+        return this._mockRequest([
+            { user_id: 1, username: "admin", email: "admin@example.com", role: "admin", is_active: true, created_at: new Date().toISOString() },
+            { user_id: 2, username: "helper", email: "helper@example.com", role: "helper", is_active: true, created_at: new Date().toISOString() },
+            { user_id: 3, username: "user", email: "user@example.com", role: "user", is_active: true, created_at: new Date().toISOString() }
+        ]);
+    }
+    async updateUserRole(id, role) { return this._mockRequest({ message: "Role updated" }); }
+    async getUsersCount() { return this._mockRequest({ total_users: 3 }); }
 
-  async getUsersCount() {
-    return this.request("/admin/users/count");
-  }
+    // Calls
+    async getAllCalls() {
+        return this._mockRequest([
+            { call_id: 101, user_username: "user", service_name: "National Emergency Service", caller_number: "01700000000", receiver_number: "999", duration_seconds: 120, created_at: new Date().toISOString(), notes: "Emergency reported" }
+        ]);
+    }
 
-  // Admin: call history
-  async getAllCalls(params = {}) {
-    const qs = new URLSearchParams(params).toString();
-    const endpoint = qs ? `/admin/calls?${qs}` : `/admin/calls`;
-    return this.request(endpoint);
-  }
+    // Chat
+    async createChatSession() { return this._mockRequest({ session_id: 123, status: 'waiting' }); }
+    async getWaitingSessions() { return this._mockRequest([]); }
+    async getMySessions() { return this._mockRequest([]); }
+    async assignSession(id) { return this._mockRequest({ success: true }); }
+    async getMessages(id) { return this._mockRequest([]); }
+    async sendMessage(id, msg) { return this._mockRequest({ success: true }); }
+    async closeSession(id) { return this._mockRequest({ success: true }); }
 
-  // Chat system
-  async createChatSession() {
-    return this.request("/chat/session", {
-      method: "POST",
-    });
-  }
-
-  async getWaitingSessions() {
-    return this.request("/chat/sessions/waiting");
-  }
-
-  async assignSession(sessionId) {
-    return this.request(`/chat/session/${sessionId}/assign`, {
-      method: "POST",
-    });
-  }
-
-  async getMySessions() {
-    return this.request("/chat/sessions/my");
-  }
-
-  async getMessages(sessionId, afterTimestamp = null) {
-    const url = afterTimestamp
-      ? `/chat/messages/${sessionId}?after=${encodeURIComponent(
-          afterTimestamp
-        )}`
-      : `/chat/messages/${sessionId}`;
-    return this.request(url);
-  }
-
-  async sendMessage(sessionId, message) {
-    return this.request("/chat/messages", {
-      method: "POST",
-      body: JSON.stringify({ session_id: sessionId, message }),
-    });
-  }
-
-  async closeSession(sessionId) {
-    return this.request(`/chat/session/${sessionId}/close`, {
-      method: "POST",
-    });
-  }
-
-  // Favorites
-  async addFavorite(contactId) {
-    return this.request("/favorites", {
-      method: "POST",
-      body: JSON.stringify({ contact_id: contactId }),
-    });
-  }
-
-  async removeFavorite(contactId) {
-    return this.request(`/favorites/${contactId}`, { method: "DELETE" });
-  }
-
-  async getFavorites() {
-    return this.request("/favorites");
-  }
+    // Favorites
+    async getFavorites() { return this._mockRequest([]); }
+    async addFavorite(id) { return this._mockRequest({ success: true }); }
+    async removeFavorite(id) { return this._mockRequest({ success: true }); }
 }
 
-// Global API instance
-const API = new EmergencyAPI();
+// Replace the global API instance
+const API = new MockAPI();
 
 // Auth helpers
 function isAuthenticated() {
   return !!localStorage.getItem("token");
 }
 
-// Helper function to get current user
 function getCurrentUser() {
   const user = localStorage.getItem("user");
   return user ? JSON.parse(user) : null;
 }
 
-// Helper function to require authentication
 function requireAuth() {
   if (!isAuthenticated()) {
     window.location.href = "index.html";
-
     return false;
   }
   return true;
 }
 
-// Helper function to check if user is admin
 function isAdmin() {
   const user = getCurrentUser();
   return user && user.role === "admin";
 }
 
-// Helper function to format date
 function formatDate(dateString) {
   const date = new Date(dateString);
   return date.toLocaleString();
-}
-
-// Helper function to show notification
-function showNotification(message, type = "success") {
-  const notification = document.createElement("div");
-  notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 animate-slide-in ${
-    type === "success" ? "bg-green-500" : "bg-red-500"
-  } text-white`;
-  notification.innerHTML = `
-        <i class="fas fa-${
-          type === "success" ? "check-circle" : "exclamation-circle"
-        } mr-2"></i>
-        ${message}
-    `;
-  document.body.appendChild(notification);
-
-  setTimeout(() => {
-    notification.style.opacity = "0";
-    notification.style.transform = "translateX(400px)";
-    setTimeout(() => notification.remove(), 300);
-  }, 3000);
 }
